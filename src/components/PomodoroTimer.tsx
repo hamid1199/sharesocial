@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,24 @@ const PomodoroTimer: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState(POMODORO_MINUTES * 60);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission().then((perm) => setNotificationPermission(perm));
+    }
+  }, []);
+
+  // Notify when timer finishes
+  useEffect(() => {
+    if (secondsLeft === 0 && notificationPermission === "granted") {
+      new Notification("Pomodoro Finished!", {
+        body: "Time's up! Take a break.",
+        icon: "/favicon.ico",
+      });
+    }
+  }, [secondsLeft, notificationPermission]);
 
   // Start timer
   const handleStart = () => {
@@ -47,7 +65,7 @@ const PomodoroTimer: React.FC = () => {
   };
 
   // Cleanup on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -81,6 +99,11 @@ const PomodoroTimer: React.FC = () => {
               ? "Stay focused!"
               : "Ready to start?"}
           </div>
+          {notificationPermission === "denied" && (
+            <div className="text-xs text-red-500 mt-2">
+              Notifications are blocked. Enable them in your browser for alerts.
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
