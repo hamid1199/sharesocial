@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-const POMODORO_MINUTES = 25;
-const BREAK_MINUTES = 5;
+const STANDARD_POMODORO_MINUTES = 25;
+const STANDARD_BREAK_MINUTES = 5;
 
 type Mode = "focus" | "break";
 
@@ -16,12 +17,24 @@ function formatTime(seconds: number) {
 }
 
 const PomodoroTimer: React.FC = () => {
+  // Customizable durations
+  const [focusMinutes, setFocusMinutes] = useState(STANDARD_POMODORO_MINUTES);
+  const [breakMinutes, setBreakMinutes] = useState(STANDARD_BREAK_MINUTES);
+
   const [mode, setMode] = useState<Mode>("focus");
-  const [secondsLeft, setSecondsLeft] = useState(POMODORO_MINUTES * 60);
+  const [secondsLeft, setSecondsLeft] = useState(focusMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+
+  // Update timer when durations change and not running
+  useEffect(() => {
+    if (!isRunning) {
+      setSecondsLeft(mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
+    }
+    // eslint-disable-next-line
+  }, [focusMinutes, breakMinutes, mode]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -103,7 +116,7 @@ const PomodoroTimer: React.FC = () => {
   const handleReset = () => {
     setIsRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setSecondsLeft(mode === "focus" ? POMODORO_MINUTES * 60 : BREAK_MINUTES * 60);
+    setSecondsLeft(mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
   };
 
   // Switch session (focus <-> break)
@@ -112,11 +125,17 @@ const PomodoroTimer: React.FC = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (mode === "focus") {
       setMode("break");
-      setSecondsLeft(BREAK_MINUTES * 60);
+      setSecondsLeft(breakMinutes * 60);
     } else {
       setMode("focus");
-      setSecondsLeft(POMODORO_MINUTES * 60);
+      setSecondsLeft(focusMinutes * 60);
     }
+  };
+
+  // Set standard times
+  const handleStandardTimes = () => {
+    setFocusMinutes(STANDARD_POMODORO_MINUTES);
+    setBreakMinutes(STANDARD_BREAK_MINUTES);
   };
 
   // Cleanup on unmount
@@ -127,7 +146,7 @@ const PomodoroTimer: React.FC = () => {
   }, []);
 
   // Progress bar calculation
-  const totalSeconds = mode === "focus" ? POMODORO_MINUTES * 60 : BREAK_MINUTES * 60;
+  const totalSeconds = mode === "focus" ? focusMinutes * 60 : breakMinutes * 60;
   const progressPercent = 100 - (secondsLeft / totalSeconds) * 100;
 
   // Color cues for mode
@@ -140,6 +159,9 @@ const PomodoroTimer: React.FC = () => {
     mode === "focus"
       ? "bg-primary"
       : "bg-green-500";
+
+  // Disable editing while running
+  const inputDisabled = isRunning || secondsLeft !== (mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
 
   return (
     <Card className="max-w-sm mx-auto shadow-lg w-full">
@@ -154,6 +176,53 @@ const PomodoroTimer: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <form
+          className="flex flex-col items-center gap-2 mb-4"
+          onSubmit={e => e.preventDefault()}
+        >
+          <div className="flex gap-2 w-full">
+            <div className="flex flex-col items-center flex-1">
+              <label htmlFor="focus-minutes" className="text-xs text-muted-foreground mb-1">
+                Focus (min)
+              </label>
+              <Input
+                id="focus-minutes"
+                type="number"
+                min={1}
+                max={120}
+                value={focusMinutes}
+                onChange={e => setFocusMinutes(Math.max(1, Math.min(120, Number(e.target.value))))}
+                disabled={!inputDisabled || mode !== "focus"}
+                className="w-16 text-center"
+              />
+            </div>
+            <div className="flex flex-col items-center flex-1">
+              <label htmlFor="break-minutes" className="text-xs text-muted-foreground mb-1">
+                Break (min)
+              </label>
+              <Input
+                id="break-minutes"
+                type="number"
+                min={1}
+                max={60}
+                value={breakMinutes}
+                onChange={e => setBreakMinutes(Math.max(1, Math.min(60, Number(e.target.value))))}
+                disabled={!inputDisabled || mode !== "break"}
+                className="w-16 text-center"
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleStandardTimes}
+            disabled={!inputDisabled}
+            className="mt-1"
+          >
+            Reset to Standard
+          </Button>
+        </form>
         <div className="flex flex-col items-center space-y-4 w-full">
           <span
             className="text-6xl font-mono font-bold tracking-widest"
