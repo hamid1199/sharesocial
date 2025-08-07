@@ -1,9 +1,15 @@
+import { MadeWithDyad } from "@/components/made-with-dyad";
 import PomodoroTimer from "@/components/PomodoroTimer";
 
-export default function Index() {
+const Index = () => {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <PomodoroTimer />
-    </main>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md">
+        <PomodoroTimer />
+      </div>
+      <MadeWithDyad />
+    </div>
   );
-}
+};
+
+export default Index;
