@@ -43,9 +43,9 @@ const PomodoroTimer: React.FC = () => {
     }
   }, []);
 
-  // Notify and vibrate when timer finishes
+  // Notify and vibrate when timer finishes, and auto-switch modes
   useEffect(() => {
-    if (secondsLeft === 0) {
+    if (secondsLeft === 0 && isRunning) {
       if (notificationPermission === "granted") {
         if (mode === "focus") {
           new Notification("Pomodoro Finished!", {
@@ -67,13 +67,46 @@ const PomodoroTimer: React.FC = () => {
       if (mode === "focus") {
         setPomodoroCount((count) => count + 1);
       }
+      // Automatically switch mode and start next session
+      setTimeout(() => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (mode === "focus") {
+          setMode("break");
+          setSecondsLeft(breakMinutes * 60);
+          setIsRunning(true);
+        } else {
+          setMode("focus");
+          setSecondsLeft(focusMinutes * 60);
+          setIsRunning(true);
+        }
+      }, 500); // short delay for notification/vibration
     }
     // eslint-disable-next-line
-  }, [secondsLeft, notificationPermission, mode]);
+  }, [secondsLeft, notificationPermission, mode, isRunning, focusMinutes, breakMinutes]);
+
+  // When mode changes and isRunning, start the timer
+  useEffect(() => {
+    if (isRunning) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line
+  }, [mode, isRunning]);
 
   // Notify when session starts
   useEffect(() => {
-    if (notificationPermission === "granted") {
+    if (notificationPermission === "granted" && isRunning) {
       if (mode === "break") {
         new Notification("Break Started!", {
           body: "Enjoy your break!",
@@ -88,22 +121,12 @@ const PomodoroTimer: React.FC = () => {
       }
     }
     // eslint-disable-next-line
-  }, [mode]);
+  }, [mode, isRunning]);
 
   // Start timer
   const handleStart = () => {
     if (isRunning) return;
     setIsRunning(true);
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          setIsRunning(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   };
 
   // Pause timer
@@ -116,20 +139,8 @@ const PomodoroTimer: React.FC = () => {
   const handleReset = () => {
     setIsRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setSecondsLeft(mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
-  };
-
-  // Switch session (focus <-> break)
-  const handleSwitchSession = () => {
-    setIsRunning(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (mode === "focus") {
-      setMode("break");
-      setSecondsLeft(breakMinutes * 60);
-    } else {
-      setMode("focus");
-      setSecondsLeft(focusMinutes * 60);
-    }
+    setMode("focus");
+    setSecondsLeft(focusMinutes * 60);
   };
 
   // Set standard times
@@ -254,18 +265,11 @@ const PomodoroTimer: React.FC = () => {
               Reset
             </Button>
           </div>
-          <div className="flex gap-2 mt-2">
-            {secondsLeft === 0 && (
-              <Button variant="outline" onClick={handleSwitchSession} aria-label="Switch session">
-                {mode === "focus" ? "Start Break" : "Start Focus"}
-              </Button>
-            )}
-          </div>
           <div className="text-xs text-muted-foreground mt-2">
             {secondsLeft === 0
               ? mode === "focus"
-                ? "Pomodoro finished! Start your break."
-                : "Break finished! Start your next focus session."
+                ? "Pomodoro finished! Starting break..."
+                : "Break finished! Starting next Pomodoro..."
               : isRunning
               ? mode === "focus"
                 ? "Stay focused!"
