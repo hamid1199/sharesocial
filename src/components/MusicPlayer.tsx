@@ -21,7 +21,9 @@ const MusicPlayer: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
 
   // Update current time as audio plays
   useEffect(() => {
@@ -74,15 +76,37 @@ const MusicPlayer: React.FC = () => {
     setCurrentTime(duration);
   };
 
-  // Seek when user clicks progress bar
+  // Seek when user clicks or drags progress bar
   const handleSeek = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (!audioRef.current || duration === 0) return;
-    const rect = (e.target as HTMLDivElement).getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percent = Math.min(Math.max(clickX / rect.width, 0), 1);
     const seekTime = percent * duration;
     audioRef.current.currentTime = seekTime;
     setCurrentTime(seekTime);
+  };
+
+  // Drag thumb
+  const handleThumbDrag = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    setIsSeeking(true);
+    handleSeek(e);
+    const onMove = (moveEvent: MouseEvent) => {
+      if (!progressBarRef.current || !audioRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const moveX = moveEvent.clientX - rect.left;
+      const percent = Math.min(Math.max(moveX / rect.width, 0), 1);
+      const seekTime = percent * duration;
+      audioRef.current.currentTime = seekTime;
+      setCurrentTime(seekTime);
+    };
+    const onUp = () => {
+      setIsSeeking(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   // Keep isPlaying in sync with audio element
@@ -93,15 +117,15 @@ const MusicPlayer: React.FC = () => {
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <Card className="max-w-sm mx-auto mt-6 w-full">
+    <Card className="max-w-sm mx-auto mt-6 w-full shadow-xl rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Music className="w-5 h-5" />
-          Music Player
+        <CardTitle className="flex items-center gap-2 text-lg font-bold">
+          <Music className="w-6 h-6 text-blue-500" />
+          <span className="tracking-wide">Music Player</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4">
           <label className="w-full flex flex-col items-center">
             <Input
               type="file"
@@ -113,28 +137,29 @@ const MusicPlayer: React.FC = () => {
             <Button
               asChild
               variant="outline"
-              className="w-full flex items-center gap-2"
+              className="w-full flex items-center gap-2 rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800"
             >
-              <label htmlFor="music-upload" className="cursor-pointer w-full flex items-center justify-center">
-                <Upload className="w-4 h-4 mr-2" />
-                {fileName ? "Change Music" : "Select Music"}
+              <label htmlFor="music-upload" className="cursor-pointer w-full flex items-center justify-center py-2">
+                <Upload className="w-4 h-4 mr-2 text-blue-500" />
+                <span className="font-medium">{fileName ? "Change Music" : "Select Music"}</span>
               </label>
             </Button>
           </label>
           {fileName && (
-            <div className="w-full text-center text-sm text-muted-foreground truncate">
+            <div className="w-full text-center text-sm font-semibold text-blue-700 dark:text-blue-300 truncate">
               {fileName}
             </div>
           )}
-          <div className="flex items-center gap-2 w-full justify-center">
+          <div className="flex items-center gap-4 w-full justify-center mt-2">
             <Button
               onClick={handlePlayPause}
               disabled={!audioUrl}
-              variant="secondary"
+              variant="default"
               size="icon"
+              className="w-14 h-14 rounded-full shadow-lg bg-blue-500 hover:bg-blue-600 text-white text-2xl flex items-center justify-center"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
             </Button>
             {audioUrl && (
               <audio
@@ -150,22 +175,31 @@ const MusicPlayer: React.FC = () => {
           </div>
           {/* Progress bar and time info */}
           {audioUrl && (
-            <div className="w-full flex flex-col gap-1">
+            <div className="w-full flex flex-col gap-2 mt-2">
               <div
-                className="w-full h-2 bg-gray-200 rounded-full overflow-hidden cursor-pointer"
+                ref={progressBarRef}
+                className="relative w-full h-3 bg-blue-100 dark:bg-slate-700 rounded-full overflow-hidden cursor-pointer group"
                 onClick={handleSeek}
-                aria-label="Music progress bar"
-                role="progressbar"
-                aria-valuenow={progressPercent}
-                aria-valuemin={0}
-                aria-valuemax={100}
               >
                 <div
-                  className="h-full bg-blue-500 transition-all duration-200"
+                  className="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-200"
                   style={{ width: `${progressPercent}%` }}
                 />
+                {/* Thumb */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2"
+                  style={{
+                    left: `calc(${progressPercent}% - 10px)`,
+                    transition: isSeeking ? "none" : "left 0.2s",
+                  }}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full bg-white border-2 border-blue-500 shadow-md cursor-pointer group-hover:scale-110 transition-transform"
+                    onMouseDown={handleThumbDrag}
+                  />
+                </div>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground font-mono mt-1">
+              <div className="flex justify-between text-xs text-blue-700 dark:text-blue-200 font-mono mt-1 px-1">
                 <span>{formatTime(currentTime)}</span>
                 <span>-{formatTime(duration - currentTime)}</span>
                 <span>{formatTime(duration)}</span>
