@@ -126,40 +126,23 @@ const MusicPlayer: React.FC = () => {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center gap-4">
-          <label className="w-full flex flex-col items-center">
-            <Input
-              type="file"
-              accept="audio/*"
-              onChange={handleFileChange}
-              className="hidden"
-              id="music-upload"
-            />
-            <Button
-              asChild
-              variant="outline"
-              className="w-full flex items-center gap-2 rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800"
-            >
-              <label htmlFor="music-upload" className="cursor-pointer w-full flex items-center justify-center py-2">
-                <Upload className="w-4 h-4 mr-2 text-blue-500" />
-                <span className="font-medium">{fileName ? "Change Music" : "Select Music"}</span>
-              </label>
-            </Button>
-          </label>
+          {/* File name */}
           {fileName && (
-            <div className="w-full text-center text-sm font-semibold text-blue-700 dark:text-blue-300 truncate">
+            <div className="w-full text-center text-base font-semibold text-blue-700 dark:text-blue-300 truncate mb-2">
               {fileName}
             </div>
           )}
-          <div className="flex items-center gap-4 w-full justify-center mt-2">
+          {/* Play/Pause button */}
+          <div className="flex items-center justify-center w-full">
             <Button
               onClick={handlePlayPause}
               disabled={!audioUrl}
               variant="default"
               size="icon"
-              className="w-14 h-14 rounded-full shadow-lg bg-blue-500 hover:bg-blue-600 text-white text-2xl flex items-center justify-center"
+              className="w-16 h-16 rounded-full shadow-lg bg-blue-500 hover:bg-blue-600 text-white text-3xl flex items-center justify-center"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+              {isPlaying ? <Pause className="w-9 h-9" /> : <Play className="w-9 h-9" />}
             </Button>
             {audioUrl && (
               <audio
@@ -206,6 +189,26 @@ const MusicPlayer: React.FC = () => {
               </div>
             </div>
           )}
+          {/* Select/Change Music button at the bottom */}
+          <label className="w-full flex flex-col items-center mt-2">
+            <Input
+              type="file"
+              accept="audio/*"
+              onChange={handleFileChange}
+              className="hidden"
+              id="music-upload"
+            />
+            <Button
+              asChild
+              variant="outline"
+              className="w-full flex items-center gap-2 rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              <label htmlFor="music-upload" className="cursor-pointer w-full flex items-center justify-center py-2">
+                <Upload className="w-4 h-4 mr-2 text-blue-500" />
+                <span className="font-medium">{fileName ? "Change Music" : "Select Music"}</span>
+              </label>
+            </Button>
+          </label>
         </div>
       </CardContent>
     </Card>
