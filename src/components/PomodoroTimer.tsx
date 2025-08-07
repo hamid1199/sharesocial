@@ -126,11 +126,20 @@ const PomodoroTimer: React.FC = () => {
     };
   }, []);
 
+  // Progress bar calculation
+  const totalSeconds = mode === "focus" ? POMODORO_MINUTES * 60 : BREAK_MINUTES * 60;
+  const progressPercent = 100 - (secondsLeft / totalSeconds) * 100;
+
   // Color cues for mode
   const modeColor =
     mode === "focus"
       ? "bg-primary text-primary-foreground"
       : "bg-green-500 text-white";
+
+  const progressBarColor =
+    mode === "focus"
+      ? "bg-primary"
+      : "bg-green-500";
 
   return (
     <Card className="max-w-sm mx-auto shadow-lg w-full">
@@ -145,7 +154,7 @@ const PomodoroTimer: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center space-y-4">
+        <div className="flex flex-col items-center space-y-4 w-full">
           <span
             className="text-6xl font-mono font-bold tracking-widest"
             aria-live="polite"
@@ -153,6 +162,18 @@ const PomodoroTimer: React.FC = () => {
           >
             {formatTime(secondsLeft)}
           </span>
+          {/* Progress Bar */}
+          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
+            <div
+              className={`h-full transition-all duration-500 ${progressBarColor}`}
+              style={{ width: `${progressPercent}%` }}
+              aria-label="Progress bar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              role="progressbar"
+            />
+          </div>
           <div className="flex gap-2">
             <Button onClick={handleStart} disabled={isRunning || secondsLeft === 0} aria-label="Start timer">
               Start
