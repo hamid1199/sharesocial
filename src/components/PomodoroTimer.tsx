@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { PomodoroType } from "./PomodoroTypeSelector";
 
 const STANDARD_POMODORO_MINUTES = 25;
 const STANDARD_BREAK_MINUTES = 5;
 
-type Mode = "focus" | "break";
+type Mode = "focus" | "break" | "longBreak";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -16,25 +17,48 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-const PomodoroTimer: React.FC = () => {
+type Props = {
+  pomodoroType: PomodoroType;
+};
+
+const PomodoroTimer: React.FC<Props> = ({ pomodoroType }) => {
   // Customizable durations
-  const [focusMinutes, setFocusMinutes] = useState(STANDARD_POMODORO_MINUTES);
-  const [breakMinutes, setBreakMinutes] = useState(STANDARD_BREAK_MINUTES);
+  const [focusMinutes, setFocusMinutes] = useState(pomodoroType.focus);
+  const [breakMinutes, setBreakMinutes] = useState(pomodoroType.break);
+  const [longBreakMinutes, setLongBreakMinutes] = useState(pomodoroType.longBreak || 15);
+  const [cyclesBeforeLongBreak, setCyclesBeforeLongBreak] = useState(pomodoroType.cyclesBeforeLongBreak || 4);
 
   const [mode, setMode] = useState<Mode>("focus");
   const [secondsLeft, setSecondsLeft] = useState(focusMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(0);
+  const [cycleCount, setCycleCount] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
   // Update timer when durations change and not running
   useEffect(() => {
     if (!isRunning) {
-      setSecondsLeft(mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
+      if (mode === "focus") setSecondsLeft(focusMinutes * 60);
+      else if (mode === "break") setSecondsLeft(breakMinutes * 60);
+      else setSecondsLeft(longBreakMinutes * 60);
     }
     // eslint-disable-next-line
-  }, [focusMinutes, breakMinutes, mode]);
+  }, [focusMinutes, breakMinutes, longBreakMinutes, mode]);
+
+  // Update durations if pomodoroType changes
+  useEffect(() => {
+    setFocusMinutes(pomodoroType.focus);
+    setBreakMinutes(pomodoroType.break);
+    setLongBreakMinutes(pomodoroType.longBreak || 15);
+    setCyclesBeforeLongBreak(pomodoroType.cyclesBeforeLongBreak || 4);
+    setMode("focus");
+    setIsRunning(false);
+    setSecondsLeft(pomodoroType.focus * 60);
+    setPomodoroCount(0);
+    setCycleCount(0);
+    // eslint-disable-next-line
+  }, [pomodoroType]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -52,9 +76,14 @@ const PomodoroTimer: React.FC = () => {
             body: "Time's up! Take a break.",
             icon: "/favicon.ico",
           });
-        } else {
+        } else if (mode === "break") {
           new Notification("Break Finished!", {
             body: "Break is over! Time to focus.",
+            icon: "/favicon.ico",
+          });
+        } else {
+          new Notification("Long Break Finished!", {
+            body: "Back to work!",
             icon: "/favicon.ico",
           });
         }
@@ -66,14 +95,23 @@ const PomodoroTimer: React.FC = () => {
       // Increment Pomodoro count after each focus session
       if (mode === "focus") {
         setPomodoroCount((count) => count + 1);
+        setCycleCount((c) => c + 1);
       }
       // Automatically switch mode and start next session
       setTimeout(() => {
         if (intervalRef.current) clearInterval(intervalRef.current);
         if (mode === "focus") {
-          setMode("break");
-          setSecondsLeft(breakMinutes * 60);
-          setIsRunning(true);
+          // If it's time for a long break
+          if (cycleCount + 1 >= cyclesBeforeLongBreak) {
+            setMode("longBreak");
+            setSecondsLeft(longBreakMinutes * 60);
+            setCycleCount(0);
+            setIsRunning(true);
+          } else {
+            setMode("break");
+            setSecondsLeft(breakMinutes * 60);
+            setIsRunning(true);
+          }
         } else {
           setMode("focus");
           setSecondsLeft(focusMinutes * 60);
@@ -82,7 +120,7 @@ const PomodoroTimer: React.FC = () => {
       }, 500); // short delay for notification/vibration
     }
     // eslint-disable-next-line
-  }, [secondsLeft, notificationPermission, mode, isRunning, focusMinutes, breakMinutes]);
+  }, [secondsLeft, notificationPermission, mode, isRunning, focusMinutes, breakMinutes, longBreakMinutes, cyclesBeforeLongBreak, cycleCount]);
 
   // When mode changes and isRunning, start the timer
   useEffect(() => {
@@ -119,6 +157,12 @@ const PomodoroTimer: React.FC = () => {
           icon: "/favicon.ico",
         });
       }
+      if (mode === "longBreak") {
+        new Notification("Long Break Started!", {
+          body: "Enjoy your long break!",
+          icon: "/favicon.ico",
+        });
+      }
     }
     // eslint-disable-next-line
   }, [mode, isRunning]);
@@ -141,12 +185,15 @@ const PomodoroTimer: React.FC = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setMode("focus");
     setSecondsLeft(focusMinutes * 60);
+    setCycleCount(0);
   };
 
   // Set standard times
   const handleStandardTimes = () => {
-    setFocusMinutes(STANDARD_POMODORO_MINUTES);
-    setBreakMinutes(STANDARD_BREAK_MINUTES);
+    setFocusMinutes(pomodoroType.focus);
+    setBreakMinutes(pomodoroType.break);
+    setLongBreakMinutes(pomodoroType.longBreak || 15);
+    setCyclesBeforeLongBreak(pomodoroType.cyclesBeforeLongBreak || 4);
   };
 
   // Cleanup on unmount
@@ -157,22 +204,38 @@ const PomodoroTimer: React.FC = () => {
   }, []);
 
   // Progress bar calculation
-  const totalSeconds = mode === "focus" ? focusMinutes * 60 : breakMinutes * 60;
+  const totalSeconds =
+    mode === "focus"
+      ? focusMinutes * 60
+      : mode === "break"
+      ? breakMinutes * 60
+      : longBreakMinutes * 60;
   const progressPercent = 100 - (secondsLeft / totalSeconds) * 100;
 
   // Color cues for mode
   const modeColor =
     mode === "focus"
       ? "bg-primary text-primary-foreground"
-      : "bg-green-500 text-white";
+      : mode === "break"
+      ? "bg-green-500 text-white"
+      : "bg-purple-600 text-white";
 
   const progressBarColor =
     mode === "focus"
       ? "bg-primary"
-      : "bg-green-500";
+      : mode === "break"
+      ? "bg-green-500"
+      : "bg-purple-600";
 
   // Disable editing while running
-  const inputDisabled = isRunning || secondsLeft !== (mode === "focus" ? focusMinutes * 60 : breakMinutes * 60);
+  const inputDisabled =
+    isRunning ||
+    secondsLeft !==
+      (mode === "focus"
+        ? focusMinutes * 60
+        : mode === "break"
+        ? breakMinutes * 60
+        : longBreakMinutes * 60);
 
   return (
     <Card className="max-w-sm mx-auto shadow-lg w-full">
@@ -180,9 +243,19 @@ const PomodoroTimer: React.FC = () => {
         <CardTitle>
           <span
             className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${modeColor}`}
-            aria-label={mode === "focus" ? "Focus mode" : "Break mode"}
+            aria-label={
+              mode === "focus"
+                ? "Focus mode"
+                : mode === "break"
+                ? "Break mode"
+                : "Long break mode"
+            }
           >
-            {mode === "focus" ? "Focus" : "Break"}
+            {mode === "focus"
+              ? "Focus"
+              : mode === "break"
+              ? "Break"
+              : "Long Break"}
           </span>
         </CardTitle>
       </CardHeader>
@@ -219,6 +292,21 @@ const PomodoroTimer: React.FC = () => {
                 value={breakMinutes}
                 onChange={e => setBreakMinutes(Math.max(1, Math.min(60, Number(e.target.value))))}
                 disabled={!inputDisabled || mode !== "break"}
+                className="w-16 text-center"
+              />
+            </div>
+            <div className="flex flex-col items-center flex-1">
+              <label htmlFor="long-break-minutes" className="text-xs text-muted-foreground mb-1">
+                Long Break (min)
+              </label>
+              <Input
+                id="long-break-minutes"
+                type="number"
+                min={1}
+                max={60}
+                value={longBreakMinutes}
+                onChange={e => setLongBreakMinutes(Math.max(1, Math.min(60, Number(e.target.value))))}
+                disabled={!inputDisabled || mode !== "longBreak"}
                 className="w-16 text-center"
               />
             </div>
@@ -269,14 +357,20 @@ const PomodoroTimer: React.FC = () => {
             {secondsLeft === 0
               ? mode === "focus"
                 ? "Pomodoro finished! Starting break..."
-                : "Break finished! Starting next Pomodoro..."
+                : mode === "break"
+                ? "Break finished! Starting next Pomodoro..."
+                : "Long break finished! Back to focus!"
               : isRunning
               ? mode === "focus"
                 ? "Stay focused!"
-                : "Enjoy your break!"
+                : mode === "break"
+                ? "Enjoy your break!"
+                : "Enjoy your long break!"
               : mode === "focus"
               ? "Ready to start your Pomodoro?"
-              : "Ready to start your break?"}
+              : mode === "break"
+              ? "Ready to start your break?"
+              : "Ready to start your long break?"}
           </div>
           <div className="text-xs text-gray-500 mt-2">
             Pomodoros completed: <span className="font-semibold">{pomodoroCount}</span>
