@@ -3,6 +3,9 @@ import PomodoroTimer from "@/components/PomodoroTimer";
 import MusicPlayer from "@/components/MusicPlayer";
 import React, { useState } from "react";
 import PomodoroTypeSelector from "@/components/PomodoroTypeSelector";
+import { useAuth } from "@/components/AuthProvider";
+import AuthForm from "@/components/AuthForm";
+import SignOutButton from "@/components/SignOutButton";
 
 // Pomodoro types data
 export type PomodoroType = {
@@ -94,13 +97,28 @@ export const POMODORO_TYPES: PomodoroType[] = [
 ];
 
 const Index = () => {
+  const { user, loading } = useAuth();
   const [selectedType, setSelectedType] = useState<PomodoroType | null>(null);
 
   // Back to type selection
   const handleBack = () => setSelectedType(null);
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-2">
+        <AuthForm />
+        <MadeWithDyad />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-2">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-2 relative">
+      <SignOutButton />
       <div className="w-full max-w-2xl">
         {!selectedType ? (
           <PomodoroTypeSelector
