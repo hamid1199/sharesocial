@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { updateProfile } from "firebase/auth";
+import { updateProfile, updateEmail, updatePassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ const Profile: React.FC = () => {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [photoURL, setPhotoURL] = useState(user?.photoURL || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +42,23 @@ const Profile: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      await updateProfile(auth.currentUser!, {
-        displayName,
-        photoURL: photoURL || undefined,
-      });
-      setSuccess("Profile updated!");
+      if (auth.currentUser) {
+        // Update display name and photo
+        await updateProfile(auth.currentUser, {
+          displayName,
+          photoURL: photoURL || undefined,
+        });
+        // Update email if changed
+        if (email && email !== user.email) {
+          await updateEmail(auth.currentUser, email);
+        }
+        // Update password if provided
+        if (newPassword) {
+          await updatePassword(auth.currentUser, newPassword);
+        }
+        setSuccess("Profile updated!");
+        setNewPassword("");
+      }
     } catch (err: any) {
       setError(err.message);
     }
@@ -57,7 +71,7 @@ const Profile: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserIcon className="w-6 h-6 text-blue-500" />
-            Profile
+            Profile & Settings
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -104,6 +118,32 @@ const Profile: React.FC = () => {
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1" htmlFor="email">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1" htmlFor="newPassword">
+                New Password
+              </label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Leave blank to keep current"
+                disabled={loading}
+                autoComplete="new-password"
               />
             </div>
             <Button type="submit" disabled={loading}>

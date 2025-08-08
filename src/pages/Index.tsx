@@ -6,7 +6,7 @@ import PomodoroTypeSelector from "@/components/PomodoroTypeSelector";
 import { useAuth } from "@/components/AuthProvider";
 import AuthForm from "@/components/AuthForm";
 import SignOutButton from "@/components/SignOutButton";
-import ProfileButton from "@/components/ProfileButton";
+import ProfileMenu from "@/components/ProfileMenu";
 
 // Pomodoro types data
 export type PomodoroType = {
@@ -119,8 +119,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-2 relative">
-      <ProfileButton />
-      <SignOutButton />
+      <ProfileMenu />
       <div className="w-full max-w-2xl">
         {!selectedType ? (
           <PomodoroTypeSelector
