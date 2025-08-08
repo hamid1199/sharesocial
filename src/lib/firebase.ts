@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 
 // TODO: Replace with your Firebase config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "",
   authDomain: "sharesoocial.firebaseapp.com",
   projectId: "YOUR_PROJECT_ID",
   appId: "YOUR_APP_ID",
