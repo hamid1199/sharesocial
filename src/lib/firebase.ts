@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 const firebaseConfig = {
   apiKey: "AIzaSyB6VqRRzszy72LY3fbJywmaZIItfVMCjsw",
   authDomain: "sharesoocial.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
+  projectId: "sharesoocial",
   appId: "YOUR_APP_ID",
 };
 
